@@ -1,0 +1,579 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>SANOPCALC - 3D Calculator Challenge</title>
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-dark: #0f0c29;
+            --bg-mid: #302b63;
+            --bg-light: #24243e;
+            --glass-bg: rgba(255, 255, 255, 0.05);
+            --glass-border: rgba(255, 255, 255, 0.1);
+            --neon-cyan: #00f2fe;
+            --neon-magenta: #ff0844;
+            --neon-green: #00b09b;
+            --neon-yellow: #f9d423;
+            --text-main: #ffffff;
+            --text-muted: #b0b0b0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background: linear-gradient(135deg, var(--bg-dark), var(--bg-mid), var(--bg-light));
+            background-size: 400% 400%;
+            animation: gradientBG 15s ease infinite;
+            color: var(--text-main);
+            height: 100vh;
+            width: 100vw;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            perspective: 1000px;
+        }
+
+        @keyframes gradientBG {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        #canvas-bg {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .screen {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 10;
+            opacity: 0;
+            pointer-events: none;
+            transition: opacity 0.5s ease, transform 0.5s ease;
+            transform: scale(0.95);
+            padding: 20px;
+        }
+
+        .screen.active {
+            opacity: 1;
+            pointer-events: all;
+            transform: scale(1);
+        }
+
+        /* Glassmorphism Classes */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--glass-border);
+            border-radius: 20px;
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.3);
+            padding: 30px;
+            width: 100%;
+            max-width: 500px;
+            text-align: center;
+            transition: transform 0.1s ease-out;
+            transform-style: preserve-3d;
+        }
+
+        .glass-panel h1, .glass-panel h2 {
+            font-family: 'Orbitron', sans-serif;
+            margin-bottom: 20px;
+            transform: translateZ(30px);
+        }
+
+        .neon-text-cyan { text-shadow: 0 0 5px var(--neon-cyan), 0 0 20px var(--neon-cyan); color: #fff; }
+        .neon-text-magenta { text-shadow: 0 0 5px var(--neon-magenta), 0 0 20px var(--neon-magenta); color: #fff; }
+
+        /* Buttons & Inputs */
+        .neon-btn {
+            background: rgba(255,255,255,0.03);
+            border: 1px solid var(--neon-cyan);
+            color: #fff;
+            padding: 12px 24px;
+            font-size: 1rem;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-family: 'Orbitron', sans-serif;
+            text-transform: uppercase;
+            box-shadow: 0 0 10px rgba(0, 242, 254, 0.2);
+            width: 100%;
+            margin-bottom: 15px;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .neon-btn:hover, .neon-btn.active {
+            background: var(--neon-cyan);
+            color: #000;
+            box-shadow: 0 0 20px var(--neon-cyan), 0 0 40px var(--neon-cyan);
+            transform: translateY(-2px);
+        }
+
+        .neon-btn.magenta { border-color: var(--neon-magenta); box-shadow: 0 0 10px rgba(255, 8, 68, 0.2); }
+        .neon-btn.magenta:hover { background: var(--neon-magenta); box-shadow: 0 0 20px var(--neon-magenta); }
+
+        .settings-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 20px;
+            transform: translateZ(20px);
+        }
+
+        select, input[type="number"], input[type="text"] {
+            width: 100%;
+            padding: 12px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid var(--glass-border);
+            color: #fff;
+            border-radius: 8px;
+            font-family: 'Poppins', sans-serif;
+            outline: none;
+            margin-bottom: 15px;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+        
+        select option { background: var(--bg-dark); color: #fff; }
+
+        /* Game UI */
+        .top-bar {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            max-width: 500px;
+            margin-bottom: 20px;
+            font-family: 'Orbitron', sans-serif;
+            position: absolute;
+            top: 20px;
+            padding: 0 20px;
+        }
+
+        .stat-box {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            padding: 8px 15px;
+            border-radius: 10px;
+            backdrop-filter: blur(5px);
+            font-size: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .stat-value { font-size: 1.2rem; font-weight: bold; }
+
+        .timer-container {
+            width: 100%;
+            height: 10px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 5px;
+            margin: 20px 0;
+            overflow: hidden;
+            transform: translateZ(25px);
+        }
+
+        .timer-bar {
+            height: 100%;
+            width: 100%;
+            background: var(--neon-green);
+            box-shadow: 0 0 10px var(--neon-green);
+            transition: width 0.1s linear, background-color 0.3s;
+        }
+
+        .question-display {
+            font-family: 'Orbitron', sans-serif;
+            font-size: 2.5rem;
+            margin: 30px 0;
+            min-height: 80px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transform: translateZ(40px);
+            text-shadow: 0 0 10px rgba(255,255,255,0.5);
+        }
+
+        .options-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            transform: translateZ(30px);
+        }
+
+        .essay-container {
+            display: none;
+            flex-direction: column;
+            gap: 10px;
+            transform: translateZ(30px);
+        }
+
+        /* Floating Animations */
+        @keyframes floatUp {
+            0% { transform: translateY(0) scale(1); opacity: 1; }
+            100% { transform: translateY(-50px) scale(1.5); opacity: 0; }
+        }
+
+        .floating-text {
+            position: absolute;
+            font-family: 'Orbitron', sans-serif;
+            font-weight: bold;
+            pointer-events: none;
+            animation: floatUp 1s ease-out forwards;
+            z-index: 100;
+        }
+
+        .correct-ans { box-shadow: 0 0 20px var(--neon-green) !important; border-color: var(--neon-green) !important; }
+        .wrong-ans { box-shadow: 0 0 20px var(--neon-magenta) !important; border-color: var(--neon-magenta) !important; animation: shake 0.4s; }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-10px); }
+            50% { transform: translateX(10px); }
+            75% { transform: translateX(-10px); }
+        }
+
+        /* Splash Screen Logo */
+        #splash-logo {
+            font-size: 3rem;
+            letter-spacing: 5px;
+            animation: zoomIn 2s ease forwards, pulseGlow 2s infinite alternate;
+        }
+
+        @keyframes zoomIn {
+            0% { transform: scale(0.5); opacity: 0; }
+            100% { transform: scale(1); opacity: 1; }
+        }
+
+        @keyframes pulseGlow {
+            0% { text-shadow: 0 0 10px var(--neon-cyan); }
+            100% { text-shadow: 0 0 30px var(--neon-cyan), 0 0 50px var(--neon-cyan); }
+        }
+
+        .controls-top-right {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            z-index: 50;
+        }
+
+        .icon-btn {
+            background: var(--glass-bg);
+            border: 1px solid var(--glass-border);
+            color: #fff;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(5px);
+            transition: all 0.3s;
+        }
+        .icon-btn:hover { background: rgba(255,255,255,0.2); }
+
+        /* Level Progress */
+        .level-progress-container {
+            width: 100%;
+            height: 4px;
+            background: rgba(255,255,255,0.1);
+            position: absolute;
+            bottom: 0;
+            left: 0;
+        }
+        .level-progress-bar {
+            height: 100%;
+            width: 0%;
+            background: var(--neon-cyan);
+            box-shadow: 0 0 10px var(--neon-cyan);
+            transition: width 0.3s ease;
+        }
+
+        @media (max-width: 600px) {
+            .glass-panel { padding: 20px; max-width: 90%; }
+            .question-display { font-size: 2rem; }
+            .top-bar { top: 10px; padding: 0 10px; }
+            .stat-box { padding: 5px 10px; font-size: 0.8rem; }
+            .stat-value { font-size: 1rem; }
+        }
+    </style>
+</head>
+<body>
+
+    <canvas id="canvas-bg"></canvas>
+
+    <!-- Splash Screen -->
+    <div id="screen-splash" class="screen active">
+        <h1 id="splash-logo" class="neon-text-cyan">SANOPCALC</h1>
+        <p style="margin-top: 10px; letter-spacing: 2px; color: var(--text-muted);">3D Calculator Challenge</p>
+    </div>
+
+    <!-- Main Menu -->
+    <div id="screen-menu" class="screen">
+        <div class="glass-panel" id="menu-card">
+            <h2 class="neon-text-cyan">CALCVERSE</h2>
+            
+            <label style="display:block; text-align:left; margin-bottom:5px; font-size:0.9rem;">Jenjang Pendidikan</label>
+            <select id="sel-jenjang">
+                <option value="TK">TK (Dasar 1)</option>
+                <option value="SD">SD (Aritmatika)</option>
+                <option value="SMP">SMP (Pecahan/Persen)</option>
+                <option value="SMA">SMA (Aljabar)</option>
+                <option value="SMK">SMK (Deret Logika)</option>
+                <option value="D3">D3 (Statistik Dasar)</option>
+                <option value="S1">S1 (Fungsi/Limit)</option>
+                <option value="S2">S2 (Turunan)</option>
+                <option value="S3">S3 (Kombinasi/Modulo)</option>
+            </select>
+
+            <label style="display:block; text-align:left; margin-bottom:5px; font-size:0.9rem;">Kesulitan</label>
+            <select id="sel-difficulty">
+                <option value="easy">Easy (Santai)</option>
+                <option value="normal" selected>Normal (Standar)</option>
+                <option value="hard">Hard (Kompleks)</option>
+                <option value="timeattack">Time Attack (Cepat)</option>
+            </select>
+
+            <label style="display:block; text-align:left; margin-bottom:5px; font-size:0.9rem;">Tipe Soal</label>
+            <div class="settings-grid">
+                <button class="neon-btn qtype-btn active" data-type="mc">Pilgan</button>
+                <button class="neon-btn qtype-btn" data-type="essay">Essay</button>
+                <button class="neon-btn qtype-btn" data-type="random" style="grid-column: span 2;">Random</button>
+            </div>
+
+            <button id="btn-start" class="neon-btn magenta" style="margin-top: 10px; font-size: 1.2rem; padding: 15px;">START GAME</button>
+            
+            <div style="margin-top: 15px; font-size: 0.8rem; color: var(--neon-yellow);">
+                Highscore: <span id="menu-highscore">0</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="screen-game" class="screen">
+        <div class="top-bar">
+            <div class="stat-box">
+                <span>LEVEL</span>
+                <span id="ui-level" class="stat-value neon-text-cyan">1</span>
+            </div>
+            <div class="stat-box">
+                <span>SCORE</span>
+                <span id="ui-score" class="stat-value neon-text-cyan">0</span>
+            </div>
+            <div class="stat-box">
+                <span>COMBO</span>
+                <span id="ui-combo" class="stat-value neon-text-magenta">x1</span>
+            </div>
+        </div>
+
+        <div class="controls-top-right">
+            <button id="btn-pause" class="icon-btn">⏸</button>
+        </div>
+
+        <div class="glass-panel" id="game-card">
+            <div class="timer-container">
+                <div id="timer-bar" class="timer-bar"></div>
+            </div>
+            
+            <div id="question-text" class="question-display">...</div>
+            
+            <!-- Multiple Choice -->
+            <div id="options-container" class="options-grid">
+                <button class="neon-btn option-btn"></button>
+                <button class="neon-btn option-btn"></button>
+                <button class="neon-btn option-btn"></button>
+                <button class="neon-btn option-btn"></button>
+            </div>
+
+            <!-- Essay -->
+            <div id="essay-container" class="essay-container">
+                <input type="number" id="essay-input" placeholder="Ketik jawaban..." autocomplete="off">
+                <button id="btn-submit-essay" class="neon-btn">Jawab</button>
+            </div>
+        </div>
+        
+        <div class="level-progress-container">
+            <div id="level-progress" class="level-progress-bar"></div>
+        </div>
+    </div>
+
+    <!-- Pause / Game Over Screen -->
+    <div id="screen-result" class="screen">
+        <div class="glass-panel">
+            <h1 id="result-title" class="neon-text-magenta">GAME OVER</h1>
+            <div style="text-align: left; margin: 20px 0; font-size: 1.1rem; line-height: 1.8;">
+                <p>Score: <strong id="res-score" class="neon-text-cyan">0</strong></p>
+                <p>Level: <strong id="res-level">1</strong></p>
+                <p>Benar: <strong id="res-correct" style="color: var(--neon-green)">0</strong></p>
+                <p>Salah: <strong id="res-wrong" style="color: var(--neon-magenta)">0</strong></p>
+                <p>Akurasi: <strong id="res-acc">0%</strong></p>
+            </div>
+            <button id="btn-resume" class="neon-btn" style="display:none;">Lanjutkan</button>
+            <button id="btn-restart" class="neon-btn magenta">Main Lagi</button>
+            <button id="btn-home" class="neon-btn">Menu Utama</button>
+        </div>
+    </div>
+
+<script>
+/** * SANOPCALC Engine 
+ * Single File SPA - Vanilla JS
+ */
+
+// --- PARTICLE SYSTEM (CANVAS) ---
+const canvas = document.getElementById('canvas-bg');
+const ctx = canvas.getContext('2d');
+let particlesArray = [];
+
+function resizeCanvas() {
+    canvas.width = window.innerWidth;
+    canvas.height = window.innerHeight;
+}
+window.addEventListener('resize', resizeCanvas);
+resizeCanvas();
+
+class Particle {
+    constructor() {
+        this.x = Math.random() * canvas.width;
+        this.y = Math.random() * canvas.height;
+        this.size = Math.random() * 3 + 1;
+        this.speedX = Math.random() * 1 - 0.5;
+        this.speedY = Math.random() * -1 - 0.5;
+        this.color = Math.random() > 0.5 ? 'rgba(0, 242, 254, 0.3)' : 'rgba(255, 8, 68, 0.3)';
+    }
+    update() {
+        this.x += this.speedX;
+        this.y += this.speedY;
+        if (this.y < 0) {
+            this.y = canvas.height;
+            this.x = Math.random() * canvas.width;
+        }
+        if (this.x < 0 || this.x > canvas.width) this.speedX *= -1;
+    }
+    draw() {
+        ctx.fillStyle = this.color;
+        ctx.beginPath();
+        ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+        ctx.fill();
+    }
+}
+
+function initParticles() {
+    particlesArray = [];
+    let numParticles = window.innerWidth < 600 ? 30 : 70;
+    for (let i = 0; i < numParticles; i++) particlesArray.push(new Particle());
+}
+
+function animateParticles() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    for (let i = 0; i < particlesArray.length; i++) {
+        particlesArray[i].update();
+        particlesArray[i].draw();
+    }
+    requestAnimationFrame(animateParticles);
+}
+initParticles();
+animateParticles();
+
+// --- GAME LOGIC & STATE ---
+const GameState = {
+    jenjang: 'SD',
+    difficulty: 'normal',
+    qTypeSetting: 'mc', // mc, essay, random
+    currentQType: 'mc',
+    level: 1,
+    score: 0,
+    combo: 1,
+    streak: 0,
+    xp: 0,
+    xpNeeded: 100,
+    maxTime: 10,
+    timeLeft: 10,
+    isPaused: false,
+    isPlaying: false,
+    currentAnswer: 0,
+    stats: { correct: 0, wrong: 0 },
+    timerRAF: null,
+    lastTime: 0
+};
+
+// DOM Elements
+const screens = {
+    splash: document.getElementById('screen-splash'),
+    menu: document.getElementById('screen-menu'),
+    game: document.getElementById('screen-game'),
+    result: document.getElementById('screen-result')
+};
+
+const UI = {
+    level: document.getElementById('ui-level'),
+    score: document.getElementById('ui-score'),
+    combo: document.getElementById('ui-combo'),
+    timerBar: document.getElementById('timer-bar'),
+    question: document.getElementById('question-text'),
+    optionsBox: document.getElementById('options-container'),
+    optBtns: document.querySelectorAll('.option-btn'),
+    essayBox: document.getElementById('essay-container'),
+    essayInput: document.getElementById('essay-input'),
+    levelProgress: document.getElementById('level-progress'),
+    menuHighscore: document.getElementById('menu-highscore')
+};
+
+// Helper Math Functions
+const rand = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
+const formatDec = (num) => Math.round(num * 100) / 100;
+
+// Question Generator Engine
+function generateQuestion() {
+    let j = GameState.jenjang;
+    let d = GameState.difficulty;
+    let lvl = GameState.level;
+    
+    let q = '', a = 0;
+    let scale = lvl * (d === 'easy' ? 0.5 : d === 'normal' ? 1 : d === 'hard' ? 2 : 1.5);
+    scale = Math.max(1, Math.floor(scale));
+
+    try {
+        switch(j) {
+            case 'TK': {
+                let max = 5 + scale;
+                let t1 = rand(1, max), t2 = rand(1, max);
+                if (rand(0,1) === 0 || d === 'easy') { q = `${t1} + ${t2}`; a = t1 + t2; }
+                else { q = `${Math.max(t1,t2)} - ${Math.min(t1,t2)}`; a = Math.abs(t1 - t2); }
+                break;
+            }
+            case 'SD': {
+                let max = 10 + (scale * 5);
+                let ops = ['+', '-'];
+                if(d !== 'easy') ops.push('*');
+                if(d === 'hard' || d === 'timeattack') ops.push('/');
+                
+                let op = ops[rand(0, ops.length - 1)];
+                let n1 = rand(1, max), n2 = rand(1, max);
+                
+                if (op === '+') { q = `${n1} + ${n2}`; a = n1 + n2; }
+                else if (op === '-') { q = `${Math.max(n1,n2)} - ${Math.min(n1,n2)}`; a = Math.abs(n1 - n2); }
+                else if (op ===
